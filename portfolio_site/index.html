@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Car Damage Severity Pipeline</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <header class="site-header" aria-label="Project navigation">
+        <a class="site-mark" href="index.html">Car Damage Severity</a>
+        <nav>
+          <a href="quality-report.html">Quality report</a>
+        </nav>
+      </header>
+
+      <section class="hero" aria-label="Project overview">
+        <div class="hero__overlay">
+          <p class="eyebrow">Data quality + model evaluation pipeline</p>
+          <h1>Car damage severity classification with leakage-aware evaluation</h1>
+          <p class="hero__copy">
+            Folder-based image data was converted into a queryable data asset, audited for leakage,
+            cleaned with reproducible manifests, and evaluated with ResNet18 model variants.
+          </p>
+          <div class="hero__actions" aria-label="Primary artifacts">
+            <a href="quality-report.html">Quality report</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="Key metrics">
+        <article class="metric-card">
+          <span>Images profiled</span>
+          <strong>1,631</strong>
+          <p>Every image receives metadata, hashes, dimensions, readability status, and split labels.</p>
+        </article>
+        <article class="metric-card alert">
+          <span>Leakage fixed</span>
+          <strong>2 hashes</strong>
+          <p>Exact duplicate hashes across training and held-out test were removed from clean training.</p>
+        </article>
+        <article class="metric-card">
+          <span>Held-out accuracy</span>
+          <strong>72.2%</strong>
+          <p>Best model: ImageNet-pretrained ResNet18 with training-time augmentation.</p>
+        </article>
+        <article class="metric-card metric-card--wide-number">
+          <span>Macro-F1 / AUC</span>
+          <strong>71.9% / 87.6%</strong>
+          <p>Final evaluation uses held-out test data after validation-based model selection.</p>
+        </article>
+      </section>
+
+      <section class="two-column" aria-label="Data pipeline and model pipeline">
+        <article class="panel">
+          <p class="eyebrow">Data engineering layer</p>
+          <h2>From folders to queryable quality tables</h2>
+          <ul class="check-list">
+            <li>Generated image-level manifest with SHA-256, perceptual hash, dimensions, file size, labels, and readability status.</li>
+            <li>Stored quality outputs in CSV and SQLite tables for repeatable SQL analysis.</li>
+            <li>Flagged exact duplicate leakage and near-duplicate candidates before model training.</li>
+            <li>Created clean train and fixed held-out test manifests without deleting source images.</li>
+          </ul>
+        </article>
+        <article class="panel">
+          <p class="eyebrow">Modeling layer</p>
+          <h2>Validation-first model selection</h2>
+          <ul class="check-list">
+            <li>Split clean training data into internal train and validation sets with stratified labels.</li>
+            <li>Selected saved model weights using internal validation macro-F1 instead of held-out test accuracy.</li>
+            <li>Compared baseline, regularized, and augmented ResNet18 variants.</li>
+            <li>Reported accuracy, macro-F1, macro-AUC, classification reports, confusion matrices, and cross-validation.</li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="panel" aria-label="Model comparison">
+        <div class="section-heading">
+          <p class="eyebrow">Model comparison</p>
+          <h2>Augmentation improved held-out performance</h2>
+        </div>
+        <div class="model-table" role="table" aria-label="Model comparison table">
+          <div class="model-table__row model-table__head" role="row">
+            <span role="columnheader">Model</span>
+            <span role="columnheader">Val macro-F1</span>
+            <span role="columnheader">Held-out accuracy</span>
+            <span role="columnheader">Held-out macro-F1</span>
+            <span role="columnheader">Macro-AUC</span>
+          </div>
+          <div class="model-table__row" role="row">
+            <span role="cell">ResNet18 augmented</span>
+            <span role="cell">66.6%</span>
+            <span role="cell">72.2%</span>
+            <span role="cell">71.9%</span>
+            <span role="cell">87.6%</span>
+          </div>
+          <div class="model-table__row" role="row">
+            <span role="cell">ResNet18 baseline</span>
+            <span role="cell">64.3%</span>
+            <span role="cell">69.0%</span>
+            <span role="cell">69.3%</span>
+            <span role="cell">86.4%</span>
+          </div>
+          <div class="model-table__row" role="row">
+            <span role="cell">ResNet18 regularized</span>
+            <span role="cell">57.6%</span>
+            <span role="cell">68.5%</span>
+            <span role="cell">67.7%</span>
+            <span role="cell">84.7%</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="visual-grid" aria-label="Evaluation visuals">
+        <article class="viz-card">
+          <h2>Accuracy lift</h2>
+          <img
+            src="../artifacts/accuracy_baseline_vs_resnet18_augmented_heldout.png"
+            alt="Accuracy bar chart comparing majority baseline with augmented ResNet18 on the held-out test set"
+          />
+        </article>
+        <article class="viz-card">
+          <h2>Confusion matrix</h2>
+          <img
+            src="../artifacts/confusion_matrix_resnet18_augmented_heldout.png"
+            alt="Confusion matrix for augmented ResNet18 on minor, moderate, and severe damage classes"
+          />
+        </article>
+        <article class="viz-card">
+          <h2>ROC curves</h2>
+          <img
+            src="../artifacts/roc_ovr_resnet18_augmented_heldout.png"
+            alt="One-vs-rest ROC curves for the augmented ResNet18 model"
+          />
+        </article>
+        <article class="viz-card">
+          <h2>Cross-validation spread</h2>
+          <img
+            src="../artifacts/cv_macroF1_by_fold_resnet18_augmented.png"
+            alt="Macro-F1 by cross-validation fold for augmented ResNet18"
+          />
+        </article>
+      </section>
+
+      <section class="two-column" aria-label="Interview narrative">
+        <article class="panel">
+          <p class="eyebrow">What changed</p>
+          <h2>Leakage-aware split design</h2>
+          <p>
+            The quality layer found 2 exact duplicate hashes across training and held-out test. The held-out set stayed fixed,
+            while the duplicated training rows were removed from the clean training manifest.
+          </p>
+          <div class="mini-stats">
+            <span><strong>1,383</strong> raw train rows</span>
+            <span><strong>1,381</strong> clean train rows</span>
+            <span><strong>248</strong> held-out test rows</span>
+          </div>
+        </article>
+        <article class="panel">
+          <p class="eyebrow">How to talk about it</p>
+          <h2>Data scientist story</h2>
+          <p>
+            The project demonstrates data validation, leakage prevention, experiment design, model comparison, and honest reporting.
+            Held-out performance is reported alongside cross-validation to show both upside and variance.
+          </p>
+          <code>python data_quality/build_dataset_manifest.py</code>
+          <code>python data_quality/create_clean_split.py</code>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

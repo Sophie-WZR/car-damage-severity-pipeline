@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Data Quality Report</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <header class="site-header" aria-label="Project navigation">
+        <a class="site-mark" href="index.html">Car Damage Severity</a>
+        <nav>
+          <a href="index.html">Results page</a>
+        </nav>
+      </header>
+
+      <section class="report-hero" aria-label="Data quality report overview">
+        <a class="back-link" href="index.html">Back to results</a>
+        <p class="eyebrow">Data quality report</p>
+        <h1>Leakage, duplicate, and split diagnostics before model training</h1>
+        <p class="hero__copy">
+          The dataset was converted into image-level metadata tables, audited for leakage risk,
+          and cleaned with reproducible manifests before final held-out evaluation.
+        </p>
+      </section>
+
+      <section class="metric-grid" aria-label="Quality summary">
+        <article class="metric-card">
+          <span>Total images</span>
+          <strong>1,631</strong>
+          <p>1,383 raw training images and 248 fixed held-out test images.</p>
+        </article>
+        <article class="metric-card">
+          <span>Unreadable files</span>
+          <strong>0</strong>
+          <p>All profiled image files passed readability validation.</p>
+        </article>
+        <article class="metric-card alert">
+          <span>Leakage candidates</span>
+          <strong>2 hashes</strong>
+          <p>Exact duplicate hashes appeared across training and held-out test.</p>
+        </article>
+        <article class="metric-card">
+          <span>Near-duplicate candidates</span>
+          <strong>38</strong>
+          <p>Perceptual hash candidates were flagged for manual review, not automatic removal.</p>
+        </article>
+      </section>
+
+      <section class="panel" aria-label="Dataset overview table">
+        <div class="section-heading">
+          <p class="eyebrow">Dataset overview</p>
+          <h2>Raw split counts</h2>
+        </div>
+        <div class="model-table compact" role="table" aria-label="Dataset split counts">
+          <div class="model-table__row model-table__head" role="row">
+            <span role="columnheader">Split</span>
+            <span role="columnheader">Minor</span>
+            <span role="columnheader">Moderate</span>
+            <span role="columnheader">Severe</span>
+            <span role="columnheader">Total</span>
+          </div>
+          <div class="model-table__row" role="row">
+            <span role="cell">Train raw</span>
+            <span role="cell">452</span>
+            <span role="cell">463</span>
+            <span role="cell">468</span>
+            <span role="cell">1,383</span>
+          </div>
+          <div class="model-table__row" role="row">
+            <span role="cell">Held-out test</span>
+            <span role="cell">82</span>
+            <span role="cell">75</span>
+            <span role="cell">91</span>
+            <span role="cell">248</span>
+          </div>
+          <div class="model-table__row" role="row">
+            <span role="cell">Clean train</span>
+            <span role="cell">450</span>
+            <span role="cell">463</span>
+            <span role="cell">468</span>
+            <span role="cell">1,381</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="two-column" aria-label="Leakage details and feature drift">
+        <article class="panel">
+          <p class="eyebrow">Leakage remediation</p>
+          <h2>Exact duplicates were removed from training</h2>
+          <p>
+            The held-out test set stayed fixed. Training rows with SHA-256 hashes already present
+            in held-out test were excluded from `clean_train_manifest.csv`.
+          </p>
+          <div class="mini-stats">
+            <span><strong>2</strong> removed train rows</span>
+            <span><strong>2</strong> exact hashes</span>
+            <span><strong>0</strong> source files deleted</span>
+          </div>
+        </article>
+        <article class="panel">
+          <p class="eyebrow">Split diagnostics</p>
+          <h2>Image metadata drift stayed low</h2>
+          <p>
+            Mean width, height, aspect ratio, and file size were compared across train and held-out test.
+            The largest relative gap was file size at 6.8%.
+          </p>
+          <div class="mini-stats">
+            <span><strong>4.2%</strong> width gap</span>
+            <span><strong>3.9%</strong> height gap</span>
+            <span><strong>0.5%</strong> aspect ratio gap</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel" aria-label="Leakage candidate rows">
+        <div class="section-heading">
+          <p class="eyebrow">Audit trail</p>
+          <h2>Exact split-leakage rows</h2>
+        </div>
+        <div class="audit-table" role="table" aria-label="Exact split leakage candidate rows">
+          <div class="audit-table__row audit-table__head" role="row">
+            <span role="columnheader">Split</span>
+            <span role="columnheader">Label</span>
+            <span role="columnheader">File</span>
+            <span role="columnheader">SHA-256</span>
+          </div>
+          <div class="audit-table__row" role="row">
+            <span role="cell">heldout_test</span>
+            <span role="cell">minor</span>
+            <span role="cell">0027.jpeg</span>
+            <span role="cell">42729fb0...d88603e</span>
+          </div>
+          <div class="audit-table__row" role="row">
+            <span role="cell">train</span>
+            <span role="cell">minor</span>
+            <span role="cell">0003.JPEG</span>
+            <span role="cell">42729fb0...d88603e</span>
+          </div>
+          <div class="audit-table__row" role="row">
+            <span role="cell">heldout_test</span>
+            <span role="cell">minor</span>
+            <span role="cell">0004.JPEG</span>
+            <span role="cell">6f337229...045eaa</span>
+          </div>
+          <div class="audit-table__row" role="row">
+            <span role="cell">train</span>
+            <span role="cell">minor</span>
+            <span role="cell">0263.JPEG</span>
+            <span role="cell">6f337229...045eaa</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Artifacts">
+        <p class="eyebrow">Reproducibility</p>
+        <h2>Generated artifacts</h2>
+        <div class="artifact-links">
+          <a href="../data_quality/dataset_manifest.csv">Dataset manifest CSV</a>
+          <a href="../data_quality/data_quality_metrics.csv">Quality metrics CSV</a>
+          <a href="../data_quality/removed_train_leakage_rows.csv">Removed leakage rows CSV</a>
+          <a href="../data_quality/image_dataset.sqlite">SQLite database</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

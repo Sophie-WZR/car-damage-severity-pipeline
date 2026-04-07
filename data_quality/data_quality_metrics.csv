@@ -1,0 +1,21 @@
+metric_name,metric_value,scope,severity,details
+total_images,1631.0,dataset,info,
+unreadable_images,0.0,dataset,pass,
+images_in_exact_duplicate_groups,22.0,dataset,warn,
+exact_duplicate_hashes_across_splits,2.0,dataset,fail,Same file hash appears in more than one split.
+images_in_perceptual_duplicate_groups,38.0,dataset,warn,Average-hash duplicate candidate count; review before deleting.
+images_by_split,248.0,heldout_test,info,
+images_by_split_label,82.0,heldout_test:minor,info,
+images_by_split_label,75.0,heldout_test:moderate,info,
+images_by_split_label,91.0,heldout_test:severe,info,
+images_by_split,1383.0,train,info,
+images_by_split_label,452.0,train:minor,info,
+images_by_split_label,463.0,train:moderate,info,
+images_by_split_label,468.0,train:severe,info,
+images_by_label,534.0,minor,info,
+images_by_label,538.0,moderate,info,
+images_by_label,559.0,severe,info,
+relative_mean_gap_width_train_vs_heldout,0.0417,dataset,pass,train_mean=246.67; heldout_mean=236.39
+relative_mean_gap_height_train_vs_heldout,0.0395,dataset,pass,train_mean=178.15; heldout_mean=171.12
+relative_mean_gap_aspect_ratio_train_vs_heldout,0.0046,dataset,pass,train_mean=1.41; heldout_mean=1.40
+relative_mean_gap_file_size_bytes_train_vs_heldout,0.0675,dataset,pass,train_mean=8791.19; heldout_mean=8197.59

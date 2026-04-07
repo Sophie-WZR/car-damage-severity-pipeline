@@ -1,0 +1,6 @@
+metric,value
+raw_train_rows,1383
+clean_train_rows,1381
+heldout_test_rows,248
+removed_train_exact_leakage_rows,2
+removed_train_exact_leakage_hashes,2

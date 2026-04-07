@@ -1,0 +1,31 @@
+.DS_Store
+Thumbs.db
+
+# Python and notebook cache
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Generated databases and heavy model weights
+data_quality/*.sqlite
+artifacts/*.pt
+
+# Raw Kaggle image data is not redistributed in this repository
+training/
+validation/
+
+# Legacy experiment artifacts superseded by semantic ResNet18 names
+artifacts/*checkpoint1*
+artifacts/*aug_variant*
+artifacts/*_v2*
+artifacts/*variant1*
+artifacts/*variant3*
+artifacts/aic_bic_*.json
+
+# Local server logs
+*.log

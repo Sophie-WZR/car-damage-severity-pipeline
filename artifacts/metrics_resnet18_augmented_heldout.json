@@ -1,0 +1,9 @@
+{
+  "selection_metric": "internal_validation_macro_f1",
+  "best_val_acc": 0.740072202166065,
+  "best_val_macro_f1": 0.7375489896676338,
+  "baseline_acc": 0.36693548387096775,
+  "heldout_test_acc": 0.7217741935483871,
+  "heldout_test_macro_f1": 0.7193318026022428,
+  "heldout_test_macro_auc_ovr": 0.875694092491031
+}
