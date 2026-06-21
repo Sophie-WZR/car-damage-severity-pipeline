@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Compare ResNet variants (18, 34, 50, 101) on car damage severity classification.
+Compare ResNet variants (18, 34, 50) on car damage severity classification.
 
 Trains each variant and logs:
   - Training curves (loss, accuracy, F1)
@@ -314,7 +314,6 @@ def main():
         ("resnet18", "resnet18.a1_in1k"),
         ("resnet34", "resnet34.a1_in1k"),
         ("resnet50", "resnet50.a1_in1k"),
-        ("resnet101", "resnet101.a1_in1k"),
     ]
     
     all_results = {}

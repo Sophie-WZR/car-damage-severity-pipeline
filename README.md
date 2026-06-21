@@ -54,7 +54,7 @@ selection, then evaluates once on the fixed held-out test manifest.
 ### ResNet Variant Comparison
 
 New tool `tools/compare_resnet_variants.py` enables automated comparison of
-ResNet18, ResNet34, ResNet50, and ResNet101 architectures on the same dataset.
+ResNet18, ResNet34, and ResNet50 architectures on the same dataset.
 Features:
 - Automatic path resolution for manifest CSV files pointing to external directories
 - Stratified train/validation/test splits with preserved class balance

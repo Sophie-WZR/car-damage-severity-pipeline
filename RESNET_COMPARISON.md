@@ -1,15 +1,14 @@
 # ResNet Variant Comparison Guide
 
-This document explains how to compare ResNet18/34/50/101 architectures on the
+This document explains how to compare ResNet18/34/50 architectures on the
 car damage severity classification task.
 
 ## Background
 
-Current baseline model: ResNet18 (11.7M parameters)
+Current baseline model: ResNet18 (11.2M parameters)
 Models to compare:
 - ResNet34: 21.8M parameters
 - ResNet50: 25.6M parameters
-- ResNet101: 44.5M parameters
 
 ## Quick Start
 
@@ -37,7 +36,6 @@ Results are saved to `artifacts/resnet_comparison/`:
 - `resnet18_results.json`: detailed ResNet18 results
 - `resnet34_results.json`: detailed ResNet34 results
 - `resnet50_results.json`: detailed ResNet50 results
-- `resnet101_results.json`: detailed ResNet101 results
 - `comparison_summary.json`: aggregated comparison for analysis
 
 ## Output Metrics
@@ -103,7 +101,6 @@ car-damage-severity-pipeline/
 │       ├── resnet18_results.json
 │       ├── resnet34_results.json
 │       ├── resnet50_results.json
-│       ├── resnet101_results.json
 │       ├── comparison_summary.json     # for aggregated analysis
 │       └── analysis_report.md          # generated markdown report
 └── requirements.txt                    # dependencies (torch, timm, etc.)
