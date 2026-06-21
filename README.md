@@ -47,17 +47,38 @@ manifest while keeping the held-out test set fixed.
 
 ## Model Layer
 
-`Model3-CNN.ipynb` now uses the leakage-aware clean manifests when present. It
+`Model3-CNN.ipynb` uses the leakage-aware clean manifests when present. It
 splits `clean_train_manifest.csv` into internal train/validation data for model
 selection, then evaluates once on the fixed held-out test manifest.
 
-Latest recorded held-out model metrics:
+### ResNet Variant Comparison
 
-- Model: ImageNet-pretrained ResNet18 with data augmentation
-- Selection metric: internal validation macro-F1
-- Held-out test accuracy: 72.2%
-- Held-out test macro-F1: 71.9%
-- Held-out test macro-AUC: 87.6%
+New tool `tools/compare_resnet_variants.py` enables automated comparison of
+ResNet18, ResNet34, ResNet50, and ResNet101 architectures on the same dataset.
+Features:
+- Automatic path resolution for manifest CSV files pointing to external directories
+- Stratified train/validation/test splits with preserved class balance
+- Per-model evaluation: accuracy, macro-F1, per-class precision/recall/F1, AIC/BIC
+- Inference time benchmarking
+
+Usage:
+```bash
+python tools/compare_resnet_variants.py \
+  --train-csv data_quality/clean_train_manifest.csv \
+  --test-csv data_quality/heldout_test_manifest.csv \
+  --output-dir artifacts/resnet_comparison \
+  --epochs 8 \
+  --batch-size 32
+```
+
+### Latest Results (ResNet18)
+
+- Model: ImageNet-pretrained ResNet18
+- Held-out test accuracy: **87.9%** (updated with path fix)
+- Held-out test macro-F1: **87.6%**
+- Parameters: 11.2M
+- Training manifests: `data_quality/clean_train_manifest.csv`
+- Detailed results: `artifacts/resnet_comparison/resnet18_testfix_results.json`
 
 The final model artifacts were generated from the leakage-aware clean training
 split and fixed held-out test manifest.
