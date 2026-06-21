@@ -290,6 +290,22 @@ def train_variant(variant_name: str, model_arch: str, train_df, val_df, test_df,
     return results
 
 
+# Known architectures: variant name -> timm model id.
+# The 18/34/50 tags are the proven "ResNet Strikes Back" A1 weights. For the larger
+# 101/152 models we use the bare timm model name, which resolves to timm's default
+# pretrained tag — robust against a specific tag being unavailable (avoids a Hub 404).
+ARCH = {
+    "resnet18": "resnet18.a1_in1k",
+    "resnet34": "resnet34.a1_in1k",
+    "resnet50": "resnet50.a1_in1k",
+    "resnet101": "resnet101",
+    "resnet152": "resnet152",
+}
+
+# Default comparison set (unchanged historical behavior: the three smaller models).
+DEFAULT_VARIANTS = ["resnet18", "resnet34", "resnet50"]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Compare ResNet variants")
     parser.add_argument("--train-csv", required=True, help="Path to training manifest CSV")
@@ -297,8 +313,13 @@ def main():
     parser.add_argument("--output-dir", required=True, help="Output directory for results")
     parser.add_argument("--epochs", type=int, default=8, help="Training epochs")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
+    parser.add_argument("--variants", nargs="+", default=DEFAULT_VARIANTS,
+                        choices=list(ARCH),
+                        help="Which ResNet variants to train (default: resnet18 resnet34 resnet50). "
+                             "Larger models resnet101 / resnet152 are also available. "
+                             "Pass a single one (e.g. --variants resnet101) to train just that model.")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    
+
     args = parser.parse_args()
     
     output_dir = Path(args.output_dir)
@@ -309,12 +330,8 @@ def main():
     train_df, val_df, test_df = load_manifests(Path(args.train_csv), Path(args.test_csv))
     print(f"  Train: {len(train_df)} | Val: {len(val_df)} | Test: {len(test_df)}")
     
-    # ResNet variants to compare
-    variants = [
-        ("resnet18", "resnet18.a1_in1k"),
-        ("resnet34", "resnet34.a1_in1k"),
-        ("resnet50", "resnet50.a1_in1k"),
-    ]
+    # ResNet variants to compare (selected via --variants)
+    variants = [(name, ARCH[name]) for name in args.variants]
     
     all_results = {}
     for name, arch in variants:
