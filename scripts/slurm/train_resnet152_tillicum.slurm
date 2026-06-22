@@ -51,6 +51,8 @@ python tools/train_resnet_ddp.py \
   --output-dir "$SCRUBBED/artifacts/resnet152" \
   --epochs "$EPOCHS" \
   --batch-size "$BATCH_SIZE" \
-  --num-workers "$NUM_WORKERS"
+  --num-workers "$NUM_WORKERS" \
+  --wandb-project "car-damage-severity" \
+  --wandb-entity "macsvlarobotics"
 
 echo "Done -> $SCRUBBED/artifacts/resnet152"
