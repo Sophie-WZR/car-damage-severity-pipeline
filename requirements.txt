@@ -8,3 +8,4 @@ torch
 torchvision
 timm
 jupyter
+wandb

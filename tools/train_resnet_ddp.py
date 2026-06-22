@@ -40,6 +40,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from sklearn.metrics import confusion_matrix
+import wandb
 
 # Reuse the dataset, manifest loader, eval helpers, and arch registry — single source
 # of truth, so the data-handling logic never drifts from the comparison script.
@@ -76,12 +77,36 @@ def main():
     p.add_argument("--lr", type=float, default=1e-4,
                    help="Base LR. Scale ~linearly with the number of GPUs for large global batches.")
     p.add_argument("--num-workers", type=int, default=4, help="DataLoader workers PER process")
+    p.add_argument("--wandb-project", default="car-damage-severity",
+                   help="Weights & Biases project name")
+    p.add_argument("--wandb-entity", default=None,
+                   help="Weights & Biases entity (team/username)")
+    p.add_argument("--disable-wandb", action="store_true",
+                   help="Disable wandb logging")
     args = p.parse_args()
 
     rank, world_size, local_rank, distributed = ddp_setup()
     main_proc = (rank == 0)
     device = torch.device(f"cuda:{local_rank}") if torch.cuda.is_available() else torch.device("cpu")
     torch.backends.cudnn.benchmark = True
+
+    # Initialize wandb on rank 0 only
+    if main_proc and not args.disable_wandb:
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=f"{args.variant}-{int(time.time())}",
+            config={
+                "variant": args.variant,
+                "epochs": args.epochs,
+                "batch_size_per_gpu": args.batch_size,
+                "global_batch_size": args.batch_size * world_size,
+                "learning_rate": args.lr,
+                "world_size": world_size,
+                "num_workers": args.num_workers,
+            },
+            tags=[args.variant, f"world_size_{world_size}"],
+        )
 
     # Every rank loads the manifests (cheap) and builds identical splits (fixed seed=42).
     train_df, val_df, test_df = load_manifests(Path(args.train_csv), Path(args.test_csv))
@@ -147,6 +172,13 @@ def main():
             history["val_acc"].append(val_acc)
             history["val_f1"].append(val_f1)
             print(f"[rank0] Epoch {ep:2d} | train_loss={train_loss:.4f} | val_acc={val_acc:.3f} | val_f1={val_f1:.3f}")
+            if not args.disable_wandb:
+                wandb.log({
+                    "epoch": ep,
+                    "train_loss": train_loss,
+                    "val_accuracy": val_acc,
+                    "val_f1": val_f1,
+                })
         if distributed:
             dist.barrier()  # other ranks wait while rank 0 evaluates (no collectives in eval)
 
@@ -183,6 +215,16 @@ def main():
             json.dump(results, f, indent=2)
         print(f"[rank0] Test acc={test_acc:.3f} f1={test_f1:.3f} | params={n_params:,} "
               f"| wall={wall:.1f}s | global_batch={args.batch_size * world_size} | saved -> {out}")
+        if not args.disable_wandb:
+            wandb.log({
+                "test_accuracy": test_acc,
+                "test_f1": test_f1,
+                "n_params": n_params,
+                "wall_time_sec": wall,
+                "aic": aic,
+                "bic": bic,
+            })
+            wandb.finish()
 
     if distributed:
         dist.barrier()
