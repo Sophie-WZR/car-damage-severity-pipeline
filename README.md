@@ -53,8 +53,8 @@ selection, then evaluates once on the fixed held-out test manifest.
 
 ### ResNet Variant Comparison
 
-New tool `tools/compare_resnet_variants.py` enables automated comparison of
-ResNet18, ResNet34, and ResNet50 architectures on the same dataset.
+New tool `tools/compare_resnet_variants.py` trains ResNet152 by default, with support for
+ResNet18, ResNet34, ResNet50, and ResNet101 via the `--variants` flag.
 Features:
 - Automatic path resolution for manifest CSV files pointing to external directories
 - Stratified train/validation/test splits with preserved class balance
@@ -71,14 +71,25 @@ python tools/compare_resnet_variants.py \
   --batch-size 32
 ```
 
-### Latest Results (ResNet18)
+Run ResNet152 only:
+```bash
+python tools/compare_resnet_variants.py \
+  --train-csv data_quality/clean_train_manifest.csv \
+  --test-csv data_quality/heldout_test_manifest.csv \
+  --output-dir artifacts/resnet_comparison \
+  --epochs 8 \
+  --batch-size 32 \
+  --variants resnet152
+```
 
-- Model: ImageNet-pretrained ResNet18
-- Held-out test accuracy: **87.9%** (updated with path fix)
-- Held-out test macro-F1: **87.6%**
-- Parameters: 11.2M
+For Tillicum H200 and multi-GPU workflows, see `docs/TILLICUM_PARALLELIZATION.md`.
+
+### Latest Results (ResNet152)
+
+- Model: ImageNet-pretrained ResNet152 (60.2M parameters)
+- Status: Training on Tillicum H200 GPU cluster
 - Training manifests: `data_quality/clean_train_manifest.csv`
-- Detailed results: `artifacts/resnet_comparison/resnet18_testfix_results.json`
+- Expected completion: See Tillicum job logs for progress
 
 The final model artifacts were generated from the leakage-aware clean training
 split and fixed held-out test manifest.
