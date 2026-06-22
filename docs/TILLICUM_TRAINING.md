@@ -1,7 +1,7 @@
 # Training the Bigger ResNet on Tillicum (UW Hyak)
 
 This guide walks through submitting a SLURM job on UW Hyak **Tillicum** to train the
-larger ResNet (ResNet50) for the car-damage-severity classifier. It adapts the
+larger ResNet (ResNet152) for the car-damage-severity classifier. It adapts the
 DreamZero `TILLICUM_SETUP.md` to this much smaller workload.
 
 > **How this differs from the DreamZero run.** This is a *tiny* job — ~1,381 training
@@ -128,15 +128,15 @@ rsync -avz ./validation/ <netid>@tillicum.hyak.uw.edu:/gpfs/scrubbed/<netid>/car
 
 ## 5. Cache pretrained weights (login node — it has internet)
 
-`timm.create_model("resnet50.a1_in1k", pretrained=True)` downloads weights from
+`timm.create_model("resnet152", pretrained=True)` downloads weights from
 HuggingFace Hub. Compute nodes may have **no outbound internet**, so prefetch into a
 `/gpfs` cache on the login node:
 
 ```bash
 module load conda && conda activate $ALLOC/env
 export HF_HOME=$ALLOC/hf_cache
-python -c "import timm; timm.create_model('resnet50.a1_in1k', pretrained=True)"
-# (ResNet50 weights are ~100 MB; this populates $HF_HOME so the job runs offline.)
+python -c "import timm; timm.create_model('resnet152', pretrained=True)"
+# (This populates $HF_HOME so the job runs offline.)
 ```
 
 The job script sets the same `HF_HOME` and `HF_HUB_OFFLINE=1`, so the compute node
@@ -171,7 +171,7 @@ python tools/compare_resnet_variants.py \
   --train-csv data_quality/clean_train_manifest.csv \
   --test-csv  data_quality/heldout_test_manifest.csv \
   --output-dir $SCRUBBED/artifacts/smoke \
-  --variants resnet50 --epochs 1 --batch-size 64
+  --variants resnet152 --epochs 1 --batch-size 64
 exit    # frees the GPU
 ```
 
@@ -181,13 +181,13 @@ If the epoch runs and writes `resnet50_results.json`, you're ready to submit.
 
 ## 8. Submit the training job
 
-The ready-to-use job script is `scripts/slurm/train_resnet50_tillicum.slurm`. It runs
-**only ResNet50** (via the `--variants resnet50` flag), 12 epochs, batch size 64, on
+The ready-to-use job script is `scripts/slurm/train_resnet152_tillicum.slurm`. It runs
+**only ResNet152**, 12 epochs, batch size 64, on
 1 GPU.
 
 ```bash
 cd $ALLOC/car-damage-severity-pipeline
-sbatch scripts/slurm/train_resnet50_tillicum.slurm
+sbatch scripts/slurm/train_resnet152_tillicum.slurm
 squeue -u $USER
 ```
 
@@ -197,11 +197,12 @@ What the script does (see the file for the exact directives):
 - Sets `HF_HOME` + `HF_HUB_OFFLINE=1` so weights load from the `/gpfs` cache.
 - `module load conda` + `conda activate $ALLOC/env` (no `cuda` module at runtime).
 - `cd`s into the repo and symlinks the staged `training/` and `validation/` folders in.
-- Writes results to `$SCRUBBED/artifacts/resnet50/` and logs to `$SCRUBBED/logs/`.
+- Writes results to `$SCRUBBED/artifacts/resnet152/` and logs to `$SCRUBBED/logs/`.
 
-**To train all three variants** for a full comparison instead, drop the
-`--variants resnet50` line (the script defaults to resnet18 + resnet34 + resnet50) and
-bump `--time` a little. **To change epochs/batch size**, edit those flags in the script.
+**To train all three variants** for a full comparison instead, run
+`tools/compare_resnet_variants.py` with explicit `--variants` and a separate output dir.
+**To change epochs/batch size**, pass env overrides at submit time, for example:
+`sbatch --export=ALL,EPOCHS=20,BATCH_SIZE=32 scripts/slurm/train_resnet152_tillicum.slurm`.
 
 ---
 
@@ -209,7 +210,7 @@ bump `--time` a little. **To change epochs/batch size**, edit those flags in the
 
 ```bash
 squeue -u $USER                                          # queue / running
-tail -f /gpfs/scrubbed/$USER/car-damage/logs/resnet50_*.out
+tail -f /gpfs/scrubbed/$USER/car-damage/logs/resnet152_*.out
 hyakusage                                                # GPU-hr + cost this cycle
 seff <jobid>                                             # per-job GPU/mem efficiency
 ```
@@ -226,19 +227,19 @@ seff <jobid>                                             # per-job GPU/mem effic
 
 ```bash
 # Run from your own machine:
-rsync -avz <netid>@tillicum.hyak.uw.edu:/gpfs/scrubbed/<netid>/car-damage/artifacts/resnet50/ \
-  ./artifacts/resnet50/
+rsync -avz <netid>@tillicum.hyak.uw.edu:/gpfs/scrubbed/<netid>/car-damage/artifacts/resnet152/ \
+  ./artifacts/resnet152/
 ```
 
 Then generate the analysis report locally:
 
 ```bash
 python tools/analyze_resnet_comparison.py \
-  --results-dir artifacts/resnet50 \
-  --output-report artifacts/resnet50/analysis_report.md
+  --results-dir artifacts/resnet152 \
+  --output-report artifacts/resnet152/analysis_report.md
 ```
 
-Outputs in `artifacts/resnet50/`: `resnet50_results.json` (accuracy, macro-F1, per-class
+Outputs in `artifacts/resnet152/`: `resnet152_results.json` (accuracy, macro-F1, per-class
 precision/recall/F1, confusion matrix, AIC/BIC, inference time) and, if you trained more
 than one variant, `comparison_summary.json`.
 
