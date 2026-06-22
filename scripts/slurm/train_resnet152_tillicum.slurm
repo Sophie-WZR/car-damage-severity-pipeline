@@ -32,6 +32,8 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
 # ---- environment ----
+# Unload conda if already loaded (from login shell), then load fresh
+module unload conda 2>/dev/null || true
 module load conda
 conda activate "$ENV"
 
