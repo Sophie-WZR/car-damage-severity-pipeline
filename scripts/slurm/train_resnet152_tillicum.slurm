@@ -39,8 +39,20 @@ conda activate "$ENV"
 
 # ---- run from repo root so manifest path resolver can find data ----
 cd "$REPO"
-ln -sfn "$SCRUBBED/data/training" training
-ln -sfn "$SCRUBBED/data/validation" validation
+
+# Safe symlink: only create if the real data directory exists; never create loops.
+for split in training validation; do
+    target="$REPO/data/$split"
+    if [[ ! -d "$target" ]]; then
+        echo "ERROR: data directory not found: $target"
+        exit 1
+    fi
+    # Remove stale link/file before re-linking
+    [[ -L "$split" || -e "$split" ]] && rm -f "$split"
+    ln -s "$target" "$split"
+    echo "Linked $split -> $target ($(ls $split | wc -l) subdirs)"
+done
+
 mkdir -p "$SCRUBBED/artifacts/resnet152"
 
 nvidia-smi -L

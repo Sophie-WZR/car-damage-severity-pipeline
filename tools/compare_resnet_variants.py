@@ -75,19 +75,15 @@ def load_manifests(train_csv: Path, test_csv: Path) -> tuple:
         p_path = Path(p)
         # Try original path first
         if p_path.exists():
-            try:
-                with Image.open(p_path) as im:
-                    im.verify()
-                return str(p_path)
-            except:
-                pass
+            return str(p_path)
 
         # Try to extract filename and search in local training/validation dirs
         filename = p_path.name
         label_dir = None
 
         if source_label_dir and isinstance(source_label_dir, str):
-            label_dir = source_label_dir.lower()
+            # Use just the last path component in case it's a full path
+            label_dir = Path(source_label_dir).name.lower()
 
         # Try to infer label from path if source_label_dir is not available
         if label_dir is None:
@@ -102,19 +98,19 @@ def load_manifests(train_csv: Path, test_csv: Path) -> tuple:
                     label_dir = "severe"
                     break
 
-        # Search in local training/validation dirs
-        for split_dir in [Path("training"), Path("validation")]:
+        # Search in local training/validation dirs (with or without a 'data/' prefix)
+        for split_dir in [
+            Path("training"), Path("validation"),
+            Path("data") / "training", Path("data") / "validation",
+        ]:
+            if not split_dir.exists():
+                continue
             for class_dir in split_dir.glob("*"):
                 if label_dir and label_dir not in class_dir.name.lower():
                     continue
                 candidate = class_dir / filename
                 if candidate.exists():
-                    try:
-                        with Image.open(candidate) as im:
-                            im.verify()
-                        return str(candidate)
-                    except:
-                        pass
+                    return str(candidate)
 
         return None
 
@@ -123,12 +119,14 @@ def load_manifests(train_csv: Path, test_csv: Path) -> tuple:
     else:
         train_df["path"] = train_df["path"].map(resolve_path)
     train_df = train_df.dropna(subset=["path"]).reset_index(drop=True)
+    print(f"[load_manifests] train resolved {len(train_df)} images (cwd={Path.cwd()})")
 
     if "source_label_dir" in test_df.columns:
         test_df["path"] = test_df.apply(lambda r: resolve_path(r["path"], r["source_label_dir"]), axis=1)
     else:
         test_df["path"] = test_df["path"].map(resolve_path)
     test_df = test_df.dropna(subset=["path"]).reset_index(drop=True)
+    print(f"[load_manifests] test resolved {len(test_df)} images")
 
     # Internal train/val split
     train_df, val_df = train_test_split(
