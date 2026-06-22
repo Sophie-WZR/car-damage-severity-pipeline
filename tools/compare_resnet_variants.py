@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Compare ResNet variants (18, 34, 50) on car damage severity classification.
+Compare ResNet variants on car damage severity classification (default: ResNet152).
 
 Trains each variant and logs:
   - Training curves (loss, accuracy, F1)
@@ -302,8 +302,8 @@ ARCH = {
     "resnet152": "resnet152",
 }
 
-# Default comparison set (unchanged historical behavior: the three smaller models).
-DEFAULT_VARIANTS = ["resnet18", "resnet34", "resnet50"]
+# Default comparison set: ResNet152 (largest model).
+DEFAULT_VARIANTS = ["resnet152"]
 
 
 def main():
@@ -315,9 +315,9 @@ def main():
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
     parser.add_argument("--variants", nargs="+", default=DEFAULT_VARIANTS,
                         choices=list(ARCH),
-                        help="Which ResNet variants to train (default: resnet18 resnet34 resnet50). "
-                             "Larger models resnet101 / resnet152 are also available. "
-                             "Pass a single one (e.g. --variants resnet101) to train just that model.")
+                        help="Which ResNet variants to train (default: resnet152). "
+                             "Other models resnet18 / resnet34 / resnet50 / resnet101 are also available. "
+                             "Pass multiple to compare: --variants resnet18 resnet50 resnet152")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
 
     args = parser.parse_args()

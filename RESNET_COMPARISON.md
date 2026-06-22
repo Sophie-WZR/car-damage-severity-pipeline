@@ -30,6 +30,18 @@ python tools/compare_resnet_variants.py \
   --batch-size 32
 ```
 
+Run ResNet152 only:
+
+```bash
+python tools/compare_resnet_variants.py \
+  --train-csv data_quality/clean_train_manifest.csv \
+  --test-csv data_quality/heldout_test_manifest.csv \
+  --output-dir artifacts/resnet_comparison \
+  --epochs 8 \
+  --batch-size 32 \
+  --variants resnet152
+```
+
 ### 3. Check Results
 
 Results are saved to `artifacts/resnet_comparison/`:
