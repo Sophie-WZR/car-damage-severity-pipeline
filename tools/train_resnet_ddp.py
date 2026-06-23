@@ -33,6 +33,8 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.distributed as dist
@@ -107,6 +109,10 @@ def main():
                 "augmentation": True,
                 "label_smoothing": 0.1,
                 "lr_scheduler": "ReduceLROnPlateau(factor=0.5,patience=3)",
+                "weight_decay": 1e-2,
+                "dropout": 0.3,
+                "drop_path_rate": 0.2,
+                "mixup_alpha": 0.2,
             },
             tags=[args.variant, f"world_size_{world_size}"],
         )
@@ -135,7 +141,11 @@ def main():
     val_loader = DataLoader(val_ds, batch_size=128, shuffle=False, num_workers=args.num_workers, pin_memory=pin)
     test_loader = DataLoader(test_ds, batch_size=128, shuffle=False, num_workers=args.num_workers, pin_memory=pin)
 
-    model = timm.create_model(ARCH[args.variant], pretrained=True, num_classes=3).to(device)
+    model = timm.create_model(
+        ARCH[args.variant], pretrained=True, num_classes=3,
+        drop_rate=0.3,        # dropout before the final classifier
+        drop_path_rate=0.2,   # stochastic depth (drops entire residual branches)
+    ).to(device)
     n_params = sum(q.numel() for q in model.parameters() if q.requires_grad)
     if distributed:
         model = DDP(model, device_ids=[local_rank] if torch.cuda.is_available() else None)
@@ -145,7 +155,8 @@ def main():
     N, K = tc.sum(), len(CarDamageDataset.CLASSES)
     w = torch.tensor([N / (K * tc[c]) for c in CarDamageDataset.CLASSES], dtype=torch.float32, device=device)
     criterion = nn.CrossEntropyLoss(weight=w, label_smoothing=0.1)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    # Weight decay (L2) via AdamW — strong regularizer for fine-tuning.
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-2)
     # Adaptive LR: halve the LR when val_loss hasn't improved for 3 epochs.
     # More responsive than cosine — only reduces when training actually stalls.
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -153,6 +164,7 @@ def main():
     )
 
     history = {"epoch": [], "train_loss": [], "train_acc": [], "val_acc": [], "val_f1": []}
+    mixup_alpha = 0.2  # Mixup: blend two images/labels; alpha=0.2 is mild but effective
     t_start = time.time()
     for ep in range(1, args.epochs + 1):
         if distributed:
@@ -162,9 +174,13 @@ def main():
         running = torch.zeros(3, device=device)
         for x, y in train_loader:
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
+            # Mixup: blend random pairs of samples
+            lam = float(np.random.beta(mixup_alpha, mixup_alpha))
+            idx = torch.randperm(x.size(0), device=device)
+            x_mix = lam * x + (1 - lam) * x[idx]
             optimizer.zero_grad()
-            logits = model(x)
-            loss = criterion(logits, y)
+            logits = model(x_mix)
+            loss = lam * criterion(logits, y) + (1 - lam) * criterion(logits, y[idx])
             loss.backward()
             optimizer.step()
             running[0] += loss.detach() * x.size(0)
