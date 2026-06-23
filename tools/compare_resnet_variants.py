@@ -30,6 +30,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from PIL import Image
+from torchvision import transforms
 from sklearn.metrics import (
     accuracy_score, f1_score, classification_report, confusion_matrix
 )
@@ -39,27 +40,48 @@ import timm
 
 
 class CarDamageDataset(Dataset):
-    """Simple image classification dataset with ImageNet normalization."""
+    """Image classification dataset with optional train-time augmentation."""
     CLASSES = ["minor", "moderate", "severe"]
     LBL = {c: i for i, c in enumerate(CLASSES)}
     IMSIZE = 224
     MEAN = np.array([0.485, 0.456, 0.406], dtype="float32")
-    STD = np.array([0.229, 0.224, 0.225], dtype="float32")
+    STD  = np.array([0.229, 0.224, 0.225], dtype="float32")
     IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
 
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame, augment: bool = False):
         self.df = df.reset_index(drop=True)
+        self.augment = augment
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx: int):
         row = self.df.iloc[idx]
-        img = Image.open(row["path"]).convert("RGB").resize((self.IMSIZE, self.IMSIZE))
+        img = Image.open(row["path"]).convert("RGB")
+
+        if self.augment:
+            # Random resized crop: randomly zooms in/out before taking 224×224 patch
+            i, j, h, w = transforms.RandomResizedCrop.get_params(
+                img, scale=(0.7, 1.0), ratio=(3/4, 4/3)
+            )
+            img = transforms.functional.resized_crop(img, i, j, h, w, (self.IMSIZE, self.IMSIZE))
+            # Horizontal flip
+            if np.random.rand() < 0.5:
+                img = transforms.functional.hflip(img)
+            # Color jitter: brightness, contrast, saturation, hue
+            img = transforms.functional.adjust_brightness(img, 1 + np.random.uniform(-0.3, 0.3))
+            img = transforms.functional.adjust_contrast(img,  1 + np.random.uniform(-0.3, 0.3))
+            img = transforms.functional.adjust_saturation(img, 1 + np.random.uniform(-0.2, 0.2))
+            # Random rotation ±15°
+            angle = np.random.uniform(-15, 15)
+            img = transforms.functional.rotate(img, angle)
+        else:
+            img = img.resize((self.IMSIZE, self.IMSIZE))
+
         arr = np.asarray(img).astype("float32") / 255.0
         arr = (arr - self.MEAN) / self.STD
         arr = arr.transpose(2, 0, 1)
-        x = torch.from_numpy(arr)
+        x = torch.from_numpy(arr.copy())
         y = self.LBL[row["label"]]
         return x, y
 
@@ -293,15 +315,20 @@ def train_variant(variant_name: str, model_arch: str, train_df, val_df, test_df,
 # 101/152 models we use the bare timm model name, which resolves to timm's default
 # pretrained tag — robust against a specific tag being unavailable (avoids a Hub 404).
 ARCH = {
-    "resnet18": "resnet18.a1_in1k",
-    "resnet34": "resnet34.a1_in1k",
-    "resnet50": "resnet50.a1_in1k",
-    "resnet101": "resnet101",
-    "resnet152": "resnet152",
+    "resnet18":          "resnet18.a1_in1k",
+    "resnet34":          "resnet34.a1_in1k",
+    "resnet50":          "resnet50.a1_in1k",
+    "resnet101":         "resnet101",
+    "resnet152":         "resnet152",
+    # Deeper / wider variants — more capacity, still fit on one H200.
+    "resnet200d":        "resnet200d",          # 65M params, deeper stem
+    "wide_resnet101_2":  "wide_resnet101_2",    # 127M params, 2× channel width
+    "resnext101_32x8d": "resnext101_32x8d",    # 89M params, grouped convolutions
+    "resnext101_64x4d": "resnext101_64x4d",    # 84M params
 }
 
-# Default comparison set: ResNet152 (largest model).
-DEFAULT_VARIANTS = ["resnet152"]
+# Default comparison set: resnext101_32x8d (grouped convolutions, stronger than resnet152).
+DEFAULT_VARIANTS = ["resnext101_32x8d"]
 
 
 def main():

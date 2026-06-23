@@ -22,7 +22,8 @@ ENV=$ALLOC/env
 
 # Optional overrides at submit time:
 # sbatch --export=ALL,EPOCHS=20,BATCH_SIZE=32 scripts/slurm/train_resnet152_tillicum.slurm
-EPOCHS=${EPOCHS:-100}
+VARIANT=${VARIANT:-resnext101_32x8d}
+EPOCHS=${EPOCHS:-50}
 BATCH_SIZE=${BATCH_SIZE:-64}
 NUM_WORKERS=${NUM_WORKERS:-4}
 
@@ -53,19 +54,19 @@ for split in training validation; do
     echo "Linked $split -> $target ($(ls $split | wc -l) subdirs)"
 done
 
-mkdir -p "$SCRUBBED/artifacts/resnet152"
+mkdir -p "$SCRUBBED/artifacts/$VARIANT"
 
 nvidia-smi -L
-echo "Launching ResNet152 training: epochs=$EPOCHS batch_size=$BATCH_SIZE"
+echo "Launching $VARIANT training: epochs=$EPOCHS batch_size=$BATCH_SIZE"
 
 python tools/train_resnet_ddp.py \
-  --variant resnet152 \
+  --variant "$VARIANT" \
   --train-csv data_quality/clean_train_manifest.csv \
   --test-csv data_quality/heldout_test_manifest.csv \
-  --output-dir "$SCRUBBED/artifacts/resnet152" \
+  --output-dir "$SCRUBBED/artifacts/$VARIANT" \
   --epochs "$EPOCHS" \
   --batch-size "$BATCH_SIZE" \
   --num-workers "$NUM_WORKERS" \
   --wandb-project "car-damage-severity"
 
-echo "Done -> $SCRUBBED/artifacts/resnet152"
+echo "Done -> $SCRUBBED/artifacts/$VARIANT"

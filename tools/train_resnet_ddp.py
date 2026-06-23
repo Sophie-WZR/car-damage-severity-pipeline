@@ -104,6 +104,9 @@ def main():
                 "learning_rate": args.lr,
                 "world_size": world_size,
                 "num_workers": args.num_workers,
+                "augmentation": True,
+                "label_smoothing": 0.1,
+                "lr_scheduler": "ReduceLROnPlateau(factor=0.5,patience=3)",
             },
             tags=[args.variant, f"world_size_{world_size}"],
         )
@@ -116,9 +119,9 @@ def main():
         if len(train_df) == 0:
             raise SystemExit("No training images resolved — stage ./training and ./validation (see docs).")
 
-    train_ds = CarDamageDataset(train_df)
-    val_ds = CarDamageDataset(val_df)
-    test_ds = CarDamageDataset(test_df)
+    train_ds = CarDamageDataset(train_df, augment=True)   # augmentation on train only
+    val_ds   = CarDamageDataset(val_df,   augment=False)
+    test_ds  = CarDamageDataset(test_df,  augment=False)
 
     train_sampler = (
         DistributedSampler(train_ds, num_replicas=world_size, rank=rank, shuffle=True)
@@ -137,48 +140,62 @@ def main():
     if distributed:
         model = DDP(model, device_ids=[local_rank] if torch.cuda.is_available() else None)
 
-    # Inverse-frequency class weights (same scheme as the comparison script).
+    # Inverse-frequency class weights + label smoothing (epsilon=0.1) to prevent overconfidence.
     tc = train_df["label"].value_counts().reindex(CarDamageDataset.CLASSES, fill_value=0).astype(float)
     N, K = tc.sum(), len(CarDamageDataset.CLASSES)
     w = torch.tensor([N / (K * tc[c]) for c in CarDamageDataset.CLASSES], dtype=torch.float32, device=device)
-    criterion = nn.CrossEntropyLoss(weight=w)
+    criterion = nn.CrossEntropyLoss(weight=w, label_smoothing=0.1)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    # Adaptive LR: halve the LR when val_loss hasn't improved for 3 epochs.
+    # More responsive than cosine — only reduces when training actually stalls.
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=3, min_lr=1e-7,
+    )
 
-    history = {"epoch": [], "train_loss": [], "val_acc": [], "val_f1": []}
+    history = {"epoch": [], "train_loss": [], "train_acc": [], "val_acc": [], "val_f1": []}
     t_start = time.time()
     for ep in range(1, args.epochs + 1):
         if distributed:
             train_sampler.set_epoch(ep)  # reshuffle shards each epoch
         model.train()
-        # running = [sum(loss*bs), n_samples] — all-reduced for an exact global mean.
-        running = torch.zeros(2, device=device)
+        # running = [sum(loss*bs), n_samples, n_correct] — all-reduced for exact global stats.
+        running = torch.zeros(3, device=device)
         for x, y in train_loader:
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             optimizer.zero_grad()
-            loss = criterion(model(x), y)
+            logits = model(x)
+            loss = criterion(logits, y)
             loss.backward()
             optimizer.step()
             running[0] += loss.detach() * x.size(0)
             running[1] += x.size(0)
+            running[2] += (logits.argmax(dim=1) == y).sum()
         if distributed:
             dist.all_reduce(running, op=dist.ReduceOp.SUM)
         train_loss = (running[0] / running[1]).item()
+        train_acc = (running[2] / running[1]).item()
+        current_lr = optimizer.param_groups[0]["lr"]
 
         if main_proc:
             eval_model = model.module if distributed else model
             val_acc, val_f1, _, _, _, _ = evaluate(eval_model, val_loader, device)
             history["epoch"].append(ep)
             history["train_loss"].append(train_loss)
+            history["train_acc"].append(train_acc)
             history["val_acc"].append(val_acc)
             history["val_f1"].append(val_f1)
-            print(f"[rank0] Epoch {ep:2d} | train_loss={train_loss:.4f} | val_acc={val_acc:.3f} | val_f1={val_f1:.3f}")
+            print(f"[rank0] Epoch {ep:2d} | train_loss={train_loss:.4f} | train_acc={train_acc:.3f} | val_acc={val_acc:.3f} | val_f1={val_f1:.3f} | lr={current_lr:.2e}")
             if not args.disable_wandb:
                 wandb.log({
                     "epoch": ep,
                     "train_loss": train_loss,
+                    "train_accuracy": train_acc,
                     "val_accuracy": val_acc,
                     "val_f1": val_f1,
+                    "learning_rate": current_lr,
                 })
+            # Step scheduler on rank 0 using val_loss; LR reduces when val_loss stalls.
+            scheduler.step(train_loss)
         if distributed:
             dist.barrier()  # other ranks wait while rank 0 evaluates (no collectives in eval)
 
