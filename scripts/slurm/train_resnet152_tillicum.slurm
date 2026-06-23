@@ -24,7 +24,7 @@ ENV=$ALLOC/env
 # sbatch --export=ALL,EPOCHS=20,BATCH_SIZE=32 scripts/slurm/train_resnet152_tillicum.slurm
 VARIANT=${VARIANT:-resnext101_32x8d}
 EPOCHS=${EPOCHS:-50}
-BATCH_SIZE=${BATCH_SIZE:-64}
+BATCH_SIZE=${BATCH_SIZE:-128}
 NUM_WORKERS=${NUM_WORKERS:-4}
 
 # ---- offline weight cache ----
