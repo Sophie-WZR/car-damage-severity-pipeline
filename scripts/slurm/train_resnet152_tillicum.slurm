@@ -22,7 +22,7 @@ ENV=$ALLOC/env
 
 # Optional overrides at submit time:
 # sbatch --export=ALL,EPOCHS=20,BATCH_SIZE=32 scripts/slurm/train_resnet152_tillicum.slurm
-EPOCHS=${EPOCHS:-12}
+EPOCHS=${EPOCHS:-100}
 BATCH_SIZE=${BATCH_SIZE:-64}
 NUM_WORKERS=${NUM_WORKERS:-4}
 
